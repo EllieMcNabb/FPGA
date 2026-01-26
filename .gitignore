@@ -1,8 +1,8 @@
-*.str
-*.log
 *.jou
-.Xil/
-FPGA.cache/
-FPGA.hw
-FPGA.ip_user_files
-FPGA.sim
+*.log
+*.str
+*.cache/
+*.runs/
+*.hw/
+*.sim/
+.ip_user_files/
