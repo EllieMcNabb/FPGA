@@ -39,16 +39,16 @@ module ethernet_rx(
     rx_state_t state;
 
     logic nibble_phase;   // 0 = low nibble, 1 = high nibble
-    logic [7:0] byte_shift;
+    logic [3:0] nibble_store;
     logic drop_frame;
-
+    
     always_ff @(posedge eth_rx_clk) begin
         rx_byte_valid <= 1'b0;
 
         if (!eth_rx_dv) begin
-            state        <= IDLE;
+            state <= IDLE;
             nibble_phase <= 1'b0;
-            drop_frame   <= 1'b0;
+            drop_frame <= 1'b0;
         end
         else begin
             // frame is being sent
@@ -59,12 +59,13 @@ module ethernet_rx(
 
             // nibble to byte (LSB first)
             if (!nibble_phase) begin
-                byte_shift[3:0] <= eth_rxd;
-                nibble_phase    <= 1'b1;
+                nibble_store <= eth_rxd;
+                nibble_phase <= 1'b1;
             end
             else begin
-                byte_shift[7:4] <= eth_rxd;
-                nibble_phase    <= 1'b0;
+                logic [7:0] full_byte = {eth_rxd, nibble_store};
+                rx_byte <= full_byte;
+                nibble_phase <= 1'b0;
 
                 // full byte has been received
                 case (state)
@@ -74,10 +75,10 @@ module ethernet_rx(
                     end
 
                     PREAMBLE: begin
-                        if (byte_shift == 8'h55) begin
+                        if (full_byte == 8'h55) begin
                             // 0x55 means preamble, do nothing
                         end
-                        else if (byte_shift == 8'hD5) begin
+                        else if (full_byte == 8'hD5) begin
                             // start frame delimiter (0xD5)
                             state <= DATA;
                         end
@@ -89,7 +90,7 @@ module ethernet_rx(
 
                     DATA: begin
                         if (!drop_frame) begin
-                            rx_byte <= byte_shift;
+                            rx_byte <= full_byte;
                             rx_byte_valid <= 1'b1;
                         end
                     end
